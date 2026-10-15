@@ -7,10 +7,11 @@ function rute() {
   var p = h.split('/');
   window.scrollTo(0, 0);
   $app.oninput = $app.onchange = $app.onclick = null;
-  navAktif(p[0] === 'progres' ? 'progres' : 'isi');
+  navAktif(p[0] === 'progres' ? 'progres' : p[0] === 'panduan' ? 'panduan' : 'isi');
   if (p[0] === 'isi' && p[1]) return tampilForm(p[1]);
   if (p[0] === 'selesai' && p[1]) return tampilSelesai(p[1]);
   if (p[0] === 'progres') return tampilProgres();
+  if (p[0] === 'panduan') return tampilPanduan();
   return tampilBeranda();
 }
 function navAktif(k) {
@@ -407,6 +408,38 @@ async function tampilSelesai(npsn) {
   $app.innerHTML = '<div class="kartu tengah"><div class="centang">✓</div><h2>Isian terkirim</h2><p>' + esc(s ? s.nama : npsn) + ' sudah tercatat selesai.</p>' +
     lain.map(function (x) { return '<a class="btn utama besar" href="#/isi/' + esc(x.npsn) + '">Lanjut ke ' + esc(x.nama) + '</a>'; }).join('') +
     '<a class="btn besar" href="#/">Kembali ke daftar sekolah</a><a class="btn besar" href="#/progres">Lihat progres</a></div>';
+}
+
+// ------------------------------------------------------------ panduan
+function tampilPanduan() {
+  $app.innerHTML =
+    '<div class="kartu panduan"><h2>Panduan petugas</h2>' +
+    '<p>Satu sekolah, satu isian. Isi saat wawancara, kirim setelah semua butir terisi.</p>' +
+    '<ol>' +
+    '<li><b>Pilih sekolah.</b> Buka <a href="#/">Isi instrumen</a>. Pilih tahap, lalu kabupaten atau kota tim Anda, lalu sekolah yang sedang diwawancarai.</li>' +
+    '<li><b>Langkah 1, Kehadiran.</b> Periksa tanggal, centang petugas yang hadir, dan ketik nama serta instansi pendamping KCD. Tambah responden dengan mengetuk perannya, lalu ketik namanya. Peran di luar daftar: ketuk <i>Peran lain</i>.</li>' +
+    '<li><b>Langkah 2 sampai 11.</b> Isi profil sekolah, praktik mandiri, pendalaman A sampai G, dan kesimpulan petugas. Catat jawaban dengan kata-kata responden. Bila responden tidak punya jawaban, ketuk <i>Responden tidak punya jawaban</i>.</li>' +
+    '<li><b>Langkah 12, Periksa dan kirim.</b> Bagian yang belum lengkap tampil sebagai daftar. Ketuk salah satunya untuk langsung ke bagian itu. Bila sudah lengkap, tekan <i>Kirim sebagai selesai</i>.</li>' +
+    '<li><b>Selesai.</b> Halaman <i>Isian terkirim</i> muncul. Lanjutkan ke sekolah kedua tim Anda.</li>' +
+    '</ol></div>' +
+    '<div class="kartu panduan"><h2>Isian aman dari sinyal putus</h2><ul>' +
+    '<li>Setiap ketikan tersimpan di perangkat ini. Isian juga dikirim ke server saat pindah langkah atau saat menekan <i>Simpan sementara</i>.</li>' +
+    '<li>Sinyal hilang di tengah jalan: lanjut mengetik. Kirim setelah sinyal kembali. Jangan hapus data browser sebelum isian terkirim.</li>' +
+    '<li>Melanjutkan isian: buka sekolah yang sama dari komputer ini atau dari perangkat lain. Isian terakhir langsung termuat.</li>' +
+    '<li>Mengubah isian yang sudah selesai: buka lagi sekolahnya, ubah, lalu di langkah 12 tekan <i>Simpan perubahan</i>.</li>' +
+    '</ul></div>' +
+    '<div class="kartu panduan"><h2>Bila ada kendala</h2><ul>' +
+    '<li><b>Tombol Kirim tidak aktif.</b> Masih ada bagian kosong. Lihat daftarnya di langkah 12.</li>' +
+    '<li><b>Diminta kode akses.</b> Masukkan kode dari koordinator. Kode hanya ditanyakan sekali di perangkat ini.</li>' +
+    '<li><b>Sekolah, tim, atau petugas keliru.</b> Hubungi koordinator. Data diubah di spreadsheet master, lalu ketuk <i>Muat ulang data sekolah dan petugas</i> di beranda.</li>' +
+    '<li><b>Muncul pesan merah.</b> Foto layar dan kirim ke koordinator.</li>' +
+    '</ul></div>' +
+    '<details class="kartu panduan"><summary>Untuk koordinator</summary><ul>' +
+    '<li>Lokus, tim, petugas, pilihan dropdown, dan pertanyaan diubah di spreadsheet <b>ABPS_Data_Master</b>. Perubahan terbaca aplikasi paling lama 10 menit, atau langsung lewat tombol muat ulang di beranda.</li>' +
+    '<li>Hasil isian ada di spreadsheet <b>ABPS_Hasil_Isian</b>. Sheet Rekap Ringkas dan Rekap Pengisian terhitung otomatis. Tab <a href="#/progres">Progres</a> menampilkan hal yang sama untuk petugas.</li>' +
+    '<li>Jangan mengubah atau menghapus ID butir (misalnya PD-01) yang sudah ada isiannya.</li>' +
+    '<li>Sebelum kegiatan dimulai, hapus baris uji di sheet Isian dan Responden (baris 2 ke bawah).</li>' +
+    '</ul></details>';
 }
 
 // ------------------------------------------------------------ progres

@@ -87,3 +87,9 @@ h2{font-size:18px;margin:0 0 10px}
 .baris-sek{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--abu-muda);text-decoration:none;color:inherit}
 .galat-kotak p{color:var(--galat)}
 @media (max-width:420px){.angka{grid-template-columns:repeat(2,1fr)}.baris{flex-direction:column;align-items:stretch}}
+
+.panduan h2{margin-bottom:6px}
+.panduan p{margin:0 0 8px}
+.panduan ol,.panduan ul{margin:0;padding-left:20px;display:grid;gap:8px}
+.panduan summary{font-weight:700;cursor:pointer;min-height:28px}
+details.panduan[open] summary{margin-bottom:8px}
