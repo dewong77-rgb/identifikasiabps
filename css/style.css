@@ -93,3 +93,7 @@ h2{font-size:18px;margin:0 0 10px}
 .panduan ol,.panduan ul{margin:0;padding-left:20px;display:grid;gap:8px}
 .panduan summary{font-weight:700;cursor:pointer;min-height:28px}
 details.panduan[open] summary{margin-bottom:8px}
+details.profil summary{font-weight:700;cursor:pointer;min-height:28px}
+.profil-isi{display:grid;gap:8px;margin-top:8px}
+.chips-profil{display:flex;flex-wrap:wrap;gap:6px}
+.profil-isi p{margin:0}

@@ -192,6 +192,19 @@ async function tampilForm(npsn) {
 }
 
 // ------------------------------------------------------------ form: gambar
+function htmlProfilSekolah() {
+  var s = F.s, st = String(s.statusBantuan || '');
+  var skema = ['Revit 2026', 'BOSKin', 'BOSP Reguler'];
+  var chips = skema.map(function (k) {
+    var ya = st.indexOf(k) >= 0;
+    return '<span class="lencana ' + (ya ? 'ok' : '') + '">' + esc(k) + ': ' + (ya ? 'Ya' : 'Tidak') + '</span>';
+  }).join(' ');
+  return '<details class="kartu profil"' + (F.step === 0 ? ' open' : '') + '><summary>Profil sekolah untuk bahan obrolan</summary>' +
+    '<div class="profil-isi"><div><b>' + esc(Number(s.jumlahPD || 0).toLocaleString('id-ID')) + '</b> peserta didik (data master) · kategori ' + esc(s.kategori) + '</div>' +
+    '<div class="chips-profil">' + chips + '</div>' +
+    '<p class="kecil">Gunakan sebagai pembuka: sekolah ini menerima dana apa saja, dan bagaimana dana itu dipakai untuk pencegahan putus sekolah.</p></div></details>';
+}
+
 function gambarForm() {
   var l = F.langkah[F.step], n = F.langkah.length, total = F.bank.length, terisi = hitungTerisi();
   var persen = Math.round(terisi / total * 100);
@@ -203,6 +216,7 @@ function gambarForm() {
     '<div class="titik">' + F.langkah.map(function (x, i) {
       return '<button class="' + (i === F.step ? 'aktif ' : '') + (langkahLengkap(i) && i < n - 1 ? 'lengkap' : '') + '" data-ke="' + i + '" aria-label="' + esc(x.judul) + '">' + (i + 1) + '</button>';
     }).join('') + '</div></div>';
+  h += htmlProfilSekolah();
   if (F.kabar) h += '<div class="info">' + esc(F.kabar) + '</div>';
   h += '<div class="kartu"><div class="kecil">Langkah ' + (F.step + 1) + ' dari ' + n + '</div><h2>' + esc(l.judul) + '</h2>' + (l.sub ? '<p class="sub">' + esc(l.sub) + '</p>' : '');
   if (l.id === 'hadir') h += htmlHadir();
