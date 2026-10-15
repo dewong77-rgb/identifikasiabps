@@ -214,14 +214,21 @@ function gambarForm() {
     '<div class="bar"><div style="width:' + persen + '%"></div></div>' +
     '<div class="kecil" id="infoTerisi">' + terisi + ' dari ' + total + ' butir terisi (' + persen + '%)' + (F.status === 'selesai' ? ' · sudah dikirim selesai' : '') + '</div>' +
     '<div class="titik">' + F.langkah.map(function (x, i) {
-      return '<button class="' + (i === F.step ? 'aktif ' : '') + (langkahLengkap(i) && i < n - 1 ? 'lengkap' : '') + '" data-ke="' + i + '" aria-label="' + esc(x.judul) + '">' + (i + 1) + '</button>';
+      return '<button class="' + (i === F.step ? 'aktif ' : '') + (langkahLengkap(i) && i < n - 1 ? 'lengkap ' : '') + (x.id === 'kesimpulan' ? 'petugas' : '') + '" data-ke="' + i + '" aria-label="' + esc(x.judul) + '">' + (i + 1) + '</button>';
     }).join('') + '</div></div>';
   h += htmlProfilSekolah();
   if (F.kabar) h += '<div class="info">' + esc(F.kabar) + '</div>';
-  h += '<div class="kartu"><div class="kecil">Langkah ' + (F.step + 1) + ' dari ' + n + '</div><h2>' + esc(l.judul) + '</h2>' + (l.sub ? '<p class="sub">' + esc(l.sub) + '</p>' : '');
+  var petugasIsi = l.id === 'kesimpulan', wawancara = l.butir.length > 0 && !petugasIsi;
+  var tag = petugasIsi ? ' <span class="lencana sedang">Diisi petugas</span>' : (wawancara ? ' <span class="lencana info">Dari wawancara responden</span>' : '');
+  h += '<div class="kartu' + (petugasIsi ? ' kartu-petugas' : '') + '"><div class="kecil">Langkah ' + (F.step + 1) + ' dari ' + n + tag + '</div><h2>' + esc(l.judul) + '</h2>' + (l.sub ? '<p class="sub">' + esc(l.sub) + '</p>' : '');
+  if (petugasIsi) h += '<div class="peringatan"><b>Bagian ini diisi petugas, bukan responden.</b> Isi setelah seluruh wawancara selesai, berdasarkan pengamatan dan jawaban sepanjang kunjungan.</div>';
   if (l.id === 'hadir') h += htmlHadir();
   else if (l.id === 'periksa') h += htmlPeriksa();
   else h += htmlButir(l);
+  if (wawancara) {
+    var ik = F.langkah.findIndex(function (x) { return x.id === 'kesimpulan'; });
+    if (!langkahLengkap(ik)) h += '<div class="info pengingat">Pengingat: setelah wawancara selesai, petugas mengisi <a href="#" data-ke="' + ik + '">Kesimpulan petugas</a> (langkah ' + (ik + 1) + ').</div>';
+  }
   h += '</div>';
   h += '<div class="navbawah"><button class="btn" data-aksi="mundur"' + (F.step === 0 ? ' disabled' : '') + '>Kembali</button>' +
     (F.status === 'selesai' ? '' : '<button class="btn" data-aksi="draft">Simpan sementara</button>') +
@@ -297,7 +304,7 @@ function htmlPeriksa() {
   var h = '<p>' + terisi + ' dari ' + F.bank.length + ' butir terisi.</p>';
   if (k.length) {
     h += '<div class="peringatan"><b>' + k.length + ' bagian masih perlu dilengkapi:</b><ul>' + k.map(function (x) {
-      return '<li><a href="#" data-ke="' + x.langkah + '">' + esc(x.label) + '</a></li>';
+      return '<li><a href="#" data-ke="' + x.langkah + '">' + esc(x.label) + '</a>' + (F.langkah[x.langkah] && F.langkah[x.langkah].id === 'kesimpulan' ? ' <span class="lencana sedang">diisi petugas</span>' : '') + '</li>';
     }).join('') + '</ul></div>';
   } else {
     h += '<div class="info ok">Semua bagian sudah lengkap. Periksa sekali lagi bila perlu, lalu kirim.</div>';
@@ -432,7 +439,7 @@ function tampilPanduan() {
     '<ol>' +
     '<li><b>Pilih sekolah.</b> Buka <a href="#/">Isi instrumen</a>. Pilih tahap, lalu kabupaten atau kota tim Anda, lalu sekolah yang sedang diwawancarai.</li>' +
     '<li><b>Langkah 1, Kehadiran.</b> Periksa tanggal, centang petugas yang hadir, dan ketik nama serta instansi pendamping KCD. Tambah responden dengan mengetuk perannya, lalu ketik namanya. Peran di luar daftar: ketuk <i>Peran lain</i>.</li>' +
-    '<li><b>Langkah 2 sampai 11.</b> Isi profil sekolah, praktik mandiri, pendalaman A sampai G, dan kesimpulan petugas. Catat jawaban dengan kata-kata responden. Bila responden tidak punya jawaban, ketuk <i>Responden tidak punya jawaban</i>.</li>' +
+    '<li><b>Langkah 2 sampai 11.</b> Isi profil sekolah, praktik mandiri, pendalaman A sampai G, dan kesimpulan petugas. Catat jawaban dengan kata-kata responden. Langkah 11, Kesimpulan petugas, bukan hasil wawancara: petugas mengisinya sendiri setelah semua pertanyaan selesai, termasuk menilai level implementasi. Bila responden tidak punya jawaban, ketuk <i>Responden tidak punya jawaban</i>.</li>' +
     '<li><b>Langkah 12, Periksa dan kirim.</b> Bagian yang belum lengkap tampil sebagai daftar. Ketuk salah satunya untuk langsung ke bagian itu. Bila sudah lengkap, tekan <i>Kirim sebagai selesai</i>.</li>' +
     '<li><b>Selesai.</b> Halaman <i>Isian terkirim</i> muncul. Lanjutkan ke sekolah kedua tim Anda.</li>' +
     '</ol></div>' +

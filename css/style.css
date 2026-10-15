@@ -97,3 +97,7 @@ details.profil summary{font-weight:700;cursor:pointer;min-height:28px}
 .profil-isi{display:grid;gap:8px;margin-top:8px}
 .chips-profil{display:flex;flex-wrap:wrap;gap:6px}
 .profil-isi p{margin:0}
+.titik button.petugas{border-style:dashed;border-color:var(--sedang)}
+.titik button.petugas.aktif{border-style:solid;border-color:var(--jingga)}
+.kartu-petugas{border-left:4px solid var(--kuning)}
+.info.pengingat{margin:14px 0 0}
