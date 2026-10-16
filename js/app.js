@@ -40,37 +40,46 @@ async function tampilBeranda() {
     perbaruiDaftarSekolah(m);
   }).catch(function (e) { console.error('progres beranda', e); });
 
-  var tahapList = Array.from(new Set(m.tim.map(function (t) { return t.tahap; }))).sort();
+  var tahapList = Array.from(new Set(m.lokus.map(function (s) { return s.tahap; }))).sort();
   var last = bacaLokal('abps_last') || {};
   var tahap = tahapList.indexOf(last.tahap) >= 0 ? last.tahap : tahapList[0];
-  var timKey = last.timKey || '';
+  var prov = last.prov || '', kab = last.kab || '';
+
+  function simpanPilihan() { simpanLokal('abps_last', { tahap: tahap, prov: prov, kab: kab }); }
+  function unik(arr) { return Array.from(new Set(arr)).sort(function (x, y) { return x.localeCompare(y); }); }
 
   function gambar() {
-    var timTahap = m.tim.filter(function (t) { return t.tahap === tahap; })
-      .sort(function (a, b) { return a.provinsi.localeCompare(b.provinsi) || a.kabKota.localeCompare(b.kabKota); });
-    if (!timTahap.some(function (t) { return t.tahap + '|' + t.noTim === timKey; })) timKey = '';
+    var lokTahap = m.lokus.filter(function (s) { return s.tahap === tahap; });
+    var provList = unik(lokTahap.map(function (s) { return s.provinsi; }));
+    if (provList.indexOf(prov) < 0) { prov = ''; kab = ''; }
+    var kabList = prov ? unik(lokTahap.filter(function (s) { return s.provinsi === prov; }).map(function (s) { return s.kabKota; })) : [];
+    if (kabList.indexOf(kab) < 0) kab = '';
     $app.innerHTML =
       '<div class="kartu">' +
       '<h2>1. Pilih tahap</h2><div class="seg">' +
       tahapList.map(function (t) {
-        var contoh = m.tim.filter(function (x) { return x.tahap === t; })[0];
+        var lt = m.lokus.filter(function (x) { return x.tahap === t; });
+        var d = lt.map(function (x) { return x.tanggalMulai; }).sort();
+        var e = lt.map(function (x) { return x.tanggalSelesai; }).sort();
         return '<button class="' + (t === tahap ? 'aktif' : '') + '" data-tahap="' + esc(t) + '"><b>' + esc(t) + '</b><small>' +
-          esc(rentangTgl(contoh.tanggalMulai, contoh.tanggalSelesai)) + '</small></button>';
+          esc(rentangTgl(d[0], e[e.length - 1])) + '</small></button>';
       }).join('') + '</div>' +
-      '<h2>2. Pilih kabupaten atau kota Anda</h2>' +
-      '<select id="selTim" class="input"><option value="">Pilih...</option>' +
-      timTahap.map(function (t) {
-        var k = t.tahap + '|' + t.noTim;
-        return '<option value="' + esc(k) + '"' + (k === timKey ? ' selected' : '') + '>' + esc(t.kabKota + ' (' + t.provinsi + ', Tim ' + t.noTim + ')') + '</option>';
+      '<h2>2. Pilih provinsi</h2>' +
+      '<select id="selProv" class="input"><option value="">Pilih...</option>' +
+      provList.map(function (x) { return '<option' + (x === prov ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>' +
+      '<h2>3. Pilih kabupaten atau kota</h2>' +
+      '<select id="selKab" class="input"' + (prov ? '' : ' disabled') + '><option value="">Pilih...</option>' +
+      kabList.map(function (x) {
+        var n = lokTahap.filter(function (s) { return s.provinsi === prov && s.kabKota === x; }).length;
+        return '<option value="' + esc(x) + '"' + (x === kab ? ' selected' : '') + '>' + esc(x) + ' (' + n + ' sekolah)</option>';
       }).join('') + '</select>' +
       '</div><div id="boxTim"></div>' +
       '<p class="kecil tengah"><a href="#" id="muatUlangMaster">Muat ulang data sekolah dan petugas</a></p>';
     document.querySelectorAll('[data-tahap]').forEach(function (b) {
-      b.onclick = function () { tahap = b.getAttribute('data-tahap'); timKey = ''; simpanLokal('abps_last', { tahap: tahap, timKey: '' }); gambar(); };
+      b.onclick = function () { tahap = b.getAttribute('data-tahap'); kab = ''; simpanPilihan(); gambar(); };
     });
-    document.getElementById('selTim').onchange = function (e) {
-      timKey = e.target.value; simpanLokal('abps_last', { tahap: tahap, timKey: timKey }); perbaruiDaftarSekolah(m);
-    };
+    document.getElementById('selProv').onchange = function (e) { prov = e.target.value; kab = ''; simpanPilihan(); gambar(); };
+    document.getElementById('selKab').onchange = function (e) { kab = e.target.value; simpanPilihan(); perbaruiDaftarSekolah(m); };
     document.getElementById('muatUlangMaster').onclick = async function (e) {
       e.preventDefault(); muat('Memuat ulang...');
       try { await apiGet('bersihkanCache'); await ambilMaster(true); toast('Data diperbarui'); } catch (er) { toast(er.message, 'galat'); }
@@ -78,7 +87,7 @@ async function tampilBeranda() {
     };
     perbaruiDaftarSekolah(m);
   }
-  window._berandaState = function () { return { tahap: tahap, timKey: timKey }; };
+  window._berandaState = function () { return { tahap: tahap, prov: prov, kab: kab }; };
   gambar();
 }
 
@@ -86,14 +95,15 @@ function perbaruiDaftarSekolah(m) {
   var box = document.getElementById('boxTim');
   if (!box || !window._berandaState) return;
   var st = window._berandaState();
-  if (!st.timKey) { box.innerHTML = ''; return; }
-  var no = Number(st.timKey.split('|')[1]);
-  var tim = m.tim.filter(function (t) { return t.tahap === st.tahap && t.noTim === no; })[0];
-  var sekolah = m.lokus.filter(function (s) { return s.tahap === st.tahap && s.noTim === no; });
+  if (!st.kab) { box.innerHTML = ''; return; }
+  var sekolah = m.lokus.filter(function (s) { return s.tahap === st.tahap && s.provinsi === st.prov && s.kabKota === st.kab; });
+  if (!sekolah.length) { box.innerHTML = ''; return; }
+  var mulai = sekolah.map(function (s) { return s.tanggalMulai; }).sort()[0];
+  var akhir = sekolah.map(function (s) { return s.tanggalSelesai; }).sort().pop();
   box.innerHTML =
-    '<div class="kartu"><h2>Tim ' + tim.noTim + '</h2>' +
-    '<p class="kecil">Petugas: ' + esc(tim.petugas.join(', ')) + '<br>Pelaksanaan: ' + esc(rentangTgl(tim.tanggalMulai, tim.tanggalSelesai)) + '</p></div>' +
-    '<h2 class="judul-luar">3. Pilih sekolah</h2>' +
+    '<div class="kartu"><h2>' + esc(st.kab) + '</h2>' +
+    '<p class="kecil">' + esc(st.prov) + ' · ' + esc(st.tahap) + '<br>Pelaksanaan: ' + esc(rentangTgl(mulai, akhir)) + '</p></div>' +
+    '<h2 class="judul-luar">4. Pilih sekolah</h2>' +
     sekolah.map(function (s) {
       var d = bacaLokal('abps_draft_' + s.npsn);
       var ss = statusSekolah[s.npsn];
@@ -156,14 +166,13 @@ async function tampilForm(npsn) {
   try { m = await ambilMaster(); } catch (e) { return galat(e.message, function () { tampilForm(npsn); }); }
   var s = m.lokus.filter(function (x) { return x.npsn === npsn; })[0];
   if (!s) return galat('Sekolah dengan NPSN ' + npsn + ' tidak ditemukan.', function () { location.hash = '#/'; });
-  var tim = m.tim.filter(function (t) { return t.tahap === s.tahap && t.noTim === s.noTim; })[0];
 
   var server = null, kabarServer = '';
   try { server = await apiGetIsian(npsn); } catch (e) { kabarServer = 'Data tersimpan di server tidak bisa dibaca (' + e.message + '). Yang tampil dari perangkat ini.'; }
   var lokal = bacaLokal('abps_draft_' + npsn);
 
   F = {
-    npsn: npsn, s: s, tim: tim, bank: m.bank, opsi: m.opsi, petugasMaster: m.petugas, langkah: susunLangkah(m.bank),
+    npsn: npsn, s: s, bank: m.bank, opsi: m.opsi, petugasMaster: m.petugas, langkah: susunLangkah(m.bank),
     step: 0, status: server ? server.status : 'baru', kotor: false, adaServer: !!server, kabar: kabarServer,
     tanggal: '', petugas: [], pendampingNama: '', pendampingInstansi: '', jawaban: {}, responden: [], lokasiLain: false
   };
@@ -179,6 +188,7 @@ async function tampilForm(npsn) {
     F.responden = (sumber.responden || []).map(function (r) { return { nama: r.nama, peran: r.peran, manual: !!r.manual }; });
   }
   if (!F.tanggal) F.tanggal = s.tanggalWawancara || '';
+  if (!sumber && !F.petugas.length) { var pt = bacaLokal('abps_petugas'); if (pt && pt.length) F.petugas = pt.slice(); }
   m.bank.forEach(function (b) { if (b.isiOtomatis === 'jumlahPD' && kosong(F.jawaban[b.idButir])) F.jawaban[b.idButir] = String(s.jumlahPD); });
   // butir lokasi: bila nilai bukan salah satu opsi, anggap "Lainnya"
   m.bank.forEach(function (b) {
@@ -210,7 +220,7 @@ function gambarForm() {
   var persen = Math.round(terisi / total * 100);
   var h = '';
   h += '<div class="kepala-form"><a href="#/" class="kembali">Ganti sekolah</a><div class="nama-sekolah">' + esc(F.s.nama) + '</div>' +
-    '<div class="kecil">NPSN ' + esc(F.s.npsn) + ' · ' + esc(F.s.kabKota) + ' · ' + esc(F.s.tahap) + ' Tim ' + F.s.noTim + '</div>' +
+    '<div class="kecil">NPSN ' + esc(F.s.npsn) + ' · ' + esc(F.s.kabKota) + ' · ' + esc(F.s.provinsi) + ' · ' + esc(F.s.tahap) + '</div>' +
     '<div class="bar"><div style="width:' + persen + '%"></div></div>' +
     '<div class="kecil" id="infoTerisi">' + terisi + ' dari ' + total + ' butir terisi (' + persen + '%)' + (F.status === 'selesai' ? ' · sudah dikirim selesai' : '') + '</div>' +
     '<div class="titik">' + F.langkah.map(function (x, i) {
@@ -243,12 +253,11 @@ function htmlHadir() {
   var h = '';
   h += '<label class="lbl">Tanggal pelaksanaan wawancara</label><input type="date" class="input" data-f="tanggal" value="' + esc(F.tanggal) + '">';
   h += '<label class="lbl">Petugas yang hadir</label><div class="cek-daftar">';
-  var daftar = F.tim.petugas.slice();
-  F.petugas.forEach(function (p) { if (daftar.indexOf(p) < 0) daftar.push(p); });
+  var daftar = F.petugas.slice();
   daftar.forEach(function (p) {
     h += '<label class="cek"><input type="checkbox" data-petugas="' + esc(p) + '"' + (F.petugas.indexOf(p) >= 0 ? ' checked' : '') + '><span>' + esc(p) + '</span></label>';
   });
-  h += '</div><div class="baris"><input class="input" id="petugasBaru" placeholder="Petugas lain, ketik namanya" list="dlPetugas"><button class="btn" data-aksi="tambahPetugas">Tambah</button></div>' +
+  h += '</div><div class="baris"><input class="input" id="petugasBaru" placeholder="Ketik atau pilih nama petugas" list="dlPetugas"><button class="btn" data-aksi="tambahPetugas">Tambah</button></div>' +
     '<datalist id="dlPetugas">' + F.petugasMaster.map(function (p) { return '<option value="' + esc(p.nama) + '">'; }).join('') + '</datalist>';
   h += '<label class="lbl">Pendamping dari KCD</label><input class="input" data-f="pendampingNama" placeholder="Nama pendamping (kosongkan bila tidak ada)" value="' + esc(F.pendampingNama) + '">' +
     '<input class="input" data-f="pendampingInstansi" placeholder="Instansi asal pendamping" value="' + esc(F.pendampingInstansi) + '">';
@@ -315,7 +324,7 @@ function htmlPeriksa() {
 }
 
 // ------------------------------------------------------------ form: interaksi
-var simpanOtomatisLokal = debounce(function () { if (F) simpanLokal('abps_draft_' + F.npsn, { at: Date.now(), data: muatan('draft') }); }, 400);
+var simpanOtomatisLokal = debounce(function () { if (F) { simpanLokal('abps_draft_' + F.npsn, { at: Date.now(), data: muatan('draft') }); if (F.petugas.length) simpanLokal('abps_petugas', F.petugas); } }, 400);
 
 function tandaiKotor() {
   F.kotor = true;
@@ -425,7 +434,7 @@ async function kirim(status, tombol) {
 async function tampilSelesai(npsn) {
   var m = await ambilMaster().catch(function () { return null; });
   var s = m && m.lokus.filter(function (x) { return x.npsn === npsn; })[0];
-  var lain = s ? m.lokus.filter(function (x) { return x.tahap === s.tahap && x.noTim === s.noTim && x.npsn !== npsn; }) : [];
+  var lain = s ? m.lokus.filter(function (x) { return x.tahap === s.tahap && x.provinsi === s.provinsi && x.kabKota === s.kabKota && x.npsn !== npsn; }) : [];
   $app.innerHTML = '<div class="kartu tengah"><div class="centang">✓</div><h2>Isian terkirim</h2><p>' + esc(s ? s.nama : npsn) + ' sudah tercatat selesai.</p>' +
     lain.map(function (x) { return '<a class="btn utama besar" href="#/isi/' + esc(x.npsn) + '">Lanjut ke ' + esc(x.nama) + '</a>'; }).join('') +
     '<a class="btn besar" href="#/">Kembali ke daftar sekolah</a><a class="btn besar" href="#/progres">Lihat progres</a></div>';
@@ -437,11 +446,11 @@ function tampilPanduan() {
     '<div class="kartu panduan"><h2>Panduan petugas</h2>' +
     '<p>Satu sekolah, satu isian. Isi saat wawancara, kirim setelah semua butir terisi.</p>' +
     '<ol>' +
-    '<li><b>Pilih sekolah.</b> Buka <a href="#/">Isi instrumen</a>. Pilih tahap, lalu kabupaten atau kota tim Anda, lalu sekolah yang sedang diwawancarai.</li>' +
-    '<li><b>Langkah 1, Kehadiran.</b> Periksa tanggal, centang petugas yang hadir, dan ketik nama serta instansi pendamping KCD. Tambah responden dengan mengetuk perannya, lalu ketik namanya. Peran di luar daftar: ketuk <i>Peran lain</i>.</li>' +
+    '<li><b>Pilih sekolah.</b> Buka <a href="#/">Isi instrumen</a>. Pilih tahap, provinsi, dan kabupaten atau kota lokus Anda, lalu sekolah yang sedang diwawancarai.</li>' +
+    '<li><b>Langkah 1, Kehadiran.</b> Periksa tanggal, tambahkan petugas yang hadir (ketik atau pilih nama, pilihan terakhir diingat di perangkat ini), dan ketik nama serta instansi pendamping KCD. Tambah responden dengan mengetuk perannya, lalu ketik namanya. Peran di luar daftar: ketuk <i>Peran lain</i>.</li>' +
     '<li><b>Langkah 2 sampai 11.</b> Kartu <i>Profil sekolah untuk bahan obrolan</i> di bagian atas menampilkan jumlah peserta didik dan skema bantuan sekolah (Revit 2026, BOSKin, BOSP Reguler). Pakai untuk membuka obrolan. Isi profil sekolah, praktik mandiri, pendalaman A sampai G, dan kesimpulan petugas. Catat jawaban dengan kata-kata responden. Langkah 11, Kesimpulan petugas, bukan hasil wawancara: petugas mengisinya sendiri setelah semua pertanyaan selesai, termasuk menilai level implementasi. Bila responden tidak punya jawaban, ketuk <i>Responden tidak punya jawaban</i>.</li>' +
     '<li><b>Langkah 12, Periksa dan kirim.</b> Bagian yang belum lengkap tampil sebagai daftar. Ketuk salah satunya untuk langsung ke bagian itu. Bila sudah lengkap, tekan <i>Kirim sebagai selesai</i>.</li>' +
-    '<li><b>Selesai.</b> Halaman <i>Isian terkirim</i> muncul. Lanjutkan ke sekolah kedua tim Anda.</li>' +
+    '<li><b>Selesai.</b> Halaman <i>Isian terkirim</i> muncul. Bila masih ada sekolah lain di kabupaten atau kota yang sama, tombol untuk melanjutkannya muncul di halaman itu.</li>' +
     '</ol></div>' +
     '<div class="kartu panduan"><h2>Isian aman dari sinyal putus</h2><ul>' +
     '<li>Setiap ketikan tersimpan di perangkat ini. Isian juga dikirim ke server saat pindah langkah atau saat menekan <i>Simpan sementara</i>.</li>' +
@@ -452,11 +461,11 @@ function tampilPanduan() {
     '<div class="kartu panduan"><h2>Bila ada kendala</h2><ul>' +
     '<li><b>Tombol Kirim tidak aktif.</b> Masih ada bagian kosong. Lihat daftarnya di langkah 12.</li>' +
     '<li><b>Diminta kode akses.</b> Masukkan kode dari koordinator. Kode hanya ditanyakan sekali di perangkat ini.</li>' +
-    '<li><b>Sekolah, tim, atau petugas keliru.</b> Hubungi koordinator. Data diubah di spreadsheet master, lalu ketuk <i>Muat ulang data sekolah dan petugas</i> di beranda.</li>' +
+    '<li><b>Sekolah atau petugas keliru.</b> Hubungi koordinator. Data diubah di spreadsheet master, lalu ketuk <i>Muat ulang data sekolah dan petugas</i> di beranda.</li>' +
     '<li><b>Muncul pesan merah.</b> Foto layar dan kirim ke koordinator.</li>' +
     '</ul></div>' +
     '<details class="kartu panduan"><summary>Untuk koordinator</summary><ul>' +
-    '<li>Lokus, tim, petugas, pilihan dropdown, dan pertanyaan diubah di spreadsheet <b>ABPS_Data_Master</b>. Perubahan terbaca aplikasi paling lama 10 menit, atau langsung lewat tombol muat ulang di beranda.</li>' +
+    '<li>Lokus, petugas, pilihan dropdown, dan pertanyaan diubah di spreadsheet <b>ABPS_Data_Master</b>. Perubahan terbaca aplikasi paling lama 10 menit, atau langsung lewat tombol muat ulang di beranda.</li>' +
     '<li>Hasil isian ada di spreadsheet <b>ABPS_Hasil_Isian</b>. Sheet Rekap Ringkas dan Rekap Pengisian terhitung otomatis. Tab <a href="#/progres">Progres</a> menampilkan hal yang sama untuk petugas.</li>' +
     '<li>Jangan mengubah atau menghapus ID butir (misalnya PD-01) yang sudah ada isiannya.</li>' +
     '<li>Sebelum kegiatan dimulai, hapus baris uji di sheet Isian dan Responden (baris 2 ke bawah).</li>' +
@@ -481,10 +490,10 @@ async function tampilProgres() {
       '<div class="angka"><div><b>' + r.selesai + '</b><span>Selesai</span></div><div><b>' + r.draft + '</b><span>Draft</span></div><div><b>' + r.belum + '</b><span>Belum mulai</span></div><div><b>' + persen + '%</b><span>dari ' + r.target + ' sekolah</span></div></div>' +
       '<div class="bar"><div style="width:' + persen + '%"></div></div><p class="kecil">Diperbarui ' + esc(p.diambil) + ' · <a href="#" id="segarkan">Segarkan</a></p></div>';
     var peta = {};
-    data.forEach(function (s) { var k = s.provinsi + '|' + s.kabKota; (peta[k] = peta[k] || []).push(s); });
+    data.forEach(function (s) { var k = s.tahap + '|' + s.provinsi + '|' + s.kabKota; (peta[k] = peta[k] || []).push(s); });
     Object.keys(peta).sort().forEach(function (k) {
       var arr = peta[k], dua = k.split('|');
-      h += '<div class="kartu"><div class="kab"><b>' + esc(dua[1]) + '</b><span class="kecil">' + esc(dua[0]) + ' · ' + esc(arr[0].tahap) + ' Tim ' + arr[0].noTim + '</span></div>';
+      h += '<div class="kartu"><div class="kab"><b>' + esc(dua[2]) + '</b><span class="kecil">' + esc(dua[1]) + ' · ' + esc(dua[0]) + '</span></div>';
       arr.forEach(function (s) {
         var lb = s.status === 'selesai' ? '<span class="lencana ok">Selesai</span>' : s.status === 'draft' ? '<span class="lencana sedang">Draft ' + s.butirTerisi + '/' + s.totalButir + '</span>' : '<span class="lencana">Belum mulai</span>';
         h += '<a class="baris-sek" href="#/isi/' + esc(s.npsn) + '"><div>' + esc(s.nama) + '<div class="kecil">' + (s.level ? esc(s.level) + ' · ' : '') + esc(s.kategori) + '</div></div>' + lb + '</a>';
