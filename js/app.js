@@ -257,8 +257,13 @@ function htmlHadir() {
   daftar.forEach(function (p) {
     h += '<label class="cek"><input type="checkbox" data-petugas="' + esc(p) + '"' + (F.petugas.indexOf(p) >= 0 ? ' checked' : '') + '><span>' + esc(p) + '</span></label>';
   });
-  h += '</div><div class="baris"><input class="input" id="petugasBaru" placeholder="Ketik atau pilih nama petugas" list="dlPetugas"><button class="btn" data-aksi="tambahPetugas">Tambah</button></div>' +
-    '<datalist id="dlPetugas">' + F.petugasMaster.map(function (p) { return '<option value="' + esc(p.nama) + '">'; }).join('') + '</datalist>';
+  h += '</div>';
+  if (!F.petugas.length) h += '<p class="kosong-info">Belum ada petugas dipilih.</p>';
+  var sisa = F.petugasMaster.filter(function (p) { return F.petugas.indexOf(p.nama) < 0; });
+  h += '<select class="input" data-pilpetugas><option value="">+ Tambah petugas...</option>' +
+    sisa.map(function (p) { return '<option value="' + esc(p.nama) + '">' + esc(p.nama) + (p.instansi ? ' (' + esc(p.instansi) + ')' : '') + '</option>'; }).join('') +
+    '<option value="__lain">Petugas lain (ketik sendiri)</option></select>';
+  if (F.petugasLain) h += '<div class="baris"><input class="input" id="petugasBaru" placeholder="Nama petugas"><button class="btn" data-aksi="tambahPetugas">Tambah</button></div>';
   h += '<label class="lbl">Pendamping dari KCD</label><input class="input" data-f="pendampingNama" placeholder="Nama pendamping (kosongkan bila tidak ada)" value="' + esc(F.pendampingNama) + '">' +
     '<input class="input" data-f="pendampingInstansi" placeholder="Instansi asal pendamping" value="' + esc(F.pendampingInstansi) + '">';
   h += '<label class="lbl">Responden yang hadir</label><p class="kecil">Ketuk peran untuk menambah responden, lalu ketik namanya. Peran lain bisa ditambahkan sendiri.</p><div class="chips">';
@@ -355,7 +360,11 @@ function pasangForm() {
   };
   $app.onchange = function (e) {
     var el = e.target;
-    if (el.hasAttribute('data-petugas')) {
+    if (el.hasAttribute('data-pilpetugas')) {
+      var v = el.value;
+      if (v === '__lain') { F.petugasLain = true; gambarForm(); var pb = document.getElementById('petugasBaru'); if (pb) pb.focus(); }
+      else if (v && F.petugas.indexOf(v) < 0) { F.petugas.push(v); tandaiKotor(); gambarForm(); }
+    } else if (el.hasAttribute('data-petugas')) {
       var p = el.getAttribute('data-petugas'), i = F.petugas.indexOf(p);
       if (el.checked && i < 0) F.petugas.push(p);
       if (!el.checked && i >= 0) F.petugas.splice(i, 1);
@@ -376,7 +385,7 @@ function pasangForm() {
     if (a === 'kirim') return kirim('selesai', t);
     if (a === 'tambahPetugas') {
       var inp = document.getElementById('petugasBaru'), nm = inp.value.trim();
-      if (nm && F.petugas.indexOf(nm) < 0) { F.petugas.push(nm); tandaiKotor(); gambarForm(); }
+      if (nm && F.petugas.indexOf(nm) < 0) { F.petugas.push(nm); F.petugasLain = false; tandaiKotor(); gambarForm(); }
       return;
     }
     if (a === 'tambahPeran') { F.responden.push({ nama: '', peran: t.getAttribute('data-peran'), manual: false }); tandaiKotor(); return segarkanResponden(true); }
@@ -447,7 +456,7 @@ function tampilPanduan() {
     '<p>Satu sekolah, satu isian. Isi saat wawancara, kirim setelah semua butir terisi.</p>' +
     '<ol>' +
     '<li><b>Pilih sekolah.</b> Buka <a href="#/">Isi instrumen</a>. Pilih tahap, provinsi, dan kabupaten atau kota lokus Anda, lalu sekolah yang sedang diwawancarai.</li>' +
-    '<li><b>Langkah 1, Kehadiran.</b> Periksa tanggal, tambahkan petugas yang hadir (ketik atau pilih nama, pilihan terakhir diingat di perangkat ini), dan ketik nama serta instansi pendamping KCD. Tambah responden dengan mengetuk perannya, lalu ketik namanya. Peran di luar daftar: ketuk <i>Peran lain</i>.</li>' +
+    '<li><b>Langkah 1, Kehadiran.</b> Periksa tanggal, pilih petugas yang hadir dari daftar (nama yang tidak ada di daftar bisa diketik lewat <i>Petugas lain</i>, pilihan terakhir diingat di perangkat ini), dan ketik nama serta instansi pendamping KCD. Tambah responden dengan mengetuk perannya, lalu ketik namanya. Peran di luar daftar: ketuk <i>Peran lain</i>.</li>' +
     '<li><b>Langkah 2 sampai 11.</b> Kartu <i>Profil sekolah untuk bahan obrolan</i> di bagian atas menampilkan jumlah peserta didik dan skema bantuan sekolah (Revit 2026, BOSKin, BOSP Reguler). Pakai untuk membuka obrolan. Isi profil sekolah, praktik mandiri, pendalaman A sampai G, dan kesimpulan petugas. Catat jawaban dengan kata-kata responden. Langkah 11, Kesimpulan petugas, bukan hasil wawancara: petugas mengisinya sendiri setelah semua pertanyaan selesai, termasuk menilai level implementasi. Bila responden tidak punya jawaban, ketuk <i>Responden tidak punya jawaban</i>.</li>' +
     '<li><b>Langkah 12, Periksa dan kirim.</b> Bagian yang belum lengkap tampil sebagai daftar. Ketuk salah satunya untuk langsung ke bagian itu. Bila sudah lengkap, tekan <i>Kirim sebagai selesai</i>.</li>' +
     '<li><b>Selesai.</b> Halaman <i>Isian terkirim</i> muncul. Bila masih ada sekolah lain di kabupaten atau kota yang sama, tombol untuk melanjutkannya muncul di halaman itu.</li>' +
