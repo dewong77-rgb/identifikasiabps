@@ -261,7 +261,7 @@ function htmlHadir() {
   if (!F.petugas.length) h += '<p class="kosong-info">Belum ada petugas dipilih.</p>';
   var sisa = F.petugasMaster.filter(function (p) { return F.petugas.indexOf(p.nama) < 0; });
   h += '<select class="input" data-pilpetugas><option value="">+ Tambah petugas...</option>' +
-    sisa.map(function (p) { return '<option value="' + esc(p.nama) + '">' + esc(p.nama) + (p.instansi ? ' (' + esc(p.instansi) + ')' : '') + '</option>'; }).join('') +
+    sisa.map(function (p) { return '<option value="' + esc(p.nama) + '">' + esc(p.nama) + '</option>'; }).join('') +
     '<option value="__lain">Petugas lain (ketik sendiri)</option></select>';
   if (F.petugasLain) h += '<div class="baris"><input class="input" id="petugasBaru" placeholder="Nama petugas"><button class="btn" data-aksi="tambahPetugas">Tambah</button></div>';
   h += '<label class="lbl">Pendamping dari KCD</label><input class="input" data-f="pendampingNama" placeholder="Nama pendamping (kosongkan bila tidak ada)" value="' + esc(F.pendampingNama) + '">' +
